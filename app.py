@@ -134,7 +134,7 @@ def index():
     </head>
     <body class="bg-light py-5">
         <div class="container" style="max-width: 800px;">
-            <h1 class="mb-4">Welcome to Soltar Batch Optimizer</h1>
+            <h1 class="mb-4">Welcome to Soltar Reorder Point Optimizer</h1>
 
             {'<div class="section-title">Upload Purchase Orders and Consumption</div><div class="title-line"></div>'}
 
