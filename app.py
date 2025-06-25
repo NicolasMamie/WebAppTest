@@ -1,4 +1,4 @@
-from flask import Flask, request
+from flask import Flask, request, send_from_directory
 import os
 import pandas as pd
 import plotly.express as px
@@ -6,6 +6,10 @@ import plotly.graph_objects as go
 import datetime as dt
 
 app = Flask(__name__)
+
+@app.route('/images/<path:filename>')
+def serve_image(filename):
+    return send_from_directory('images', filename)
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -34,11 +38,11 @@ def index():
             col_in = numeric_cols[0]
             col_out = numeric_cols[1]
 
-            df_in = df[[date_col_in, col_in]]
+            df_in = df[[date_col_in, col_in]].copy()
             df_in['Type'] = 'Purchase'
             df_in.rename(columns={'Time_in':'Time', 'In': 'Quantity'}, inplace=True)
 
-            df_out = df[[date_col_out, col_out]]
+            df_out = df[[date_col_out, col_out]].copy()
             df_out['Type'] = 'Sale'
             df_out.rename(columns={'Time_out':'Time', 'Out':'Quantity'}, inplace=True)
 
@@ -57,56 +61,50 @@ def index():
          
             fig = go.Figure()
 
-            '''
-           
-            fig.add_trace(go.Bar(
-                    x=df_combined['Time'],
-                    y=df_combined['Quantity'],
-                    name=col_in,
-                    marker_color='green',
-                    width=0.05
-                ))
-            '''
+            
             #df_combined['Time'] = pd.to_datetime(df_combined['Time'])
             # Purchases (green)
             #df_purchases = df_combined[df_combined['Type'] == 'Purchase']
+            df_pivot = df_combined.pivot_table(
+                index='Time',
+                columns='Type',
+                values='Quantity',
+                aggfunc='sum',
+                fill_value=0
+            ).reset_index()
+
+            # Sort by time
+            df_pivot = df_pivot.sort_values('Time')
+
+            # Create the figure
+            fig = go.Figure()
+
+            # Add Purchase bars
             fig.add_trace(go.Bar(
-                x=df_combined['Time'],
-                y=df_combined['Quantity'],
+                x=df_pivot['Time'],
+                y=df_pivot.get('Purchase', [0]*len(df_pivot)),
                 name='Purchase',
-                marker_color='green',
-                width=0.5
+                marker_color='green'
             ))
-            '''
-            # Sales (red)
-            df_sales = df_combined[df_combined['Type'] == 'Sale']
+
+            # Add Sale bars
             fig.add_trace(go.Bar(
-                x=df_sales['Time'],
-                y=df_sales['Quantity'],
+                x=df_pivot['Time'],
+                y=df_pivot.get('Sale', [0]*len(df_pivot)),
                 name='Sale',
-                marker_color='red',
-                width=0.5
+                marker_color='red'
             ))
-            
+
+            # Update layout
             fig.update_layout(
                 title=f"Bar Chart of '{col_in}'",
                 xaxis_title='Time',
                 yaxis_title='QTY',
-                #xaxis=dict(type='category'),  # Use 'category' if x_col is datetime and not continuous
-                xaxis=dict(
-                    type='date',
-                    tickformat='%Y-%m-%d'
-                )
-                
+                barmode='group',  # 'group' for side-by-side bars, 'stack' to stack them
+                xaxis=dict(type='category')  # Optional: you can remove this if 'Time' is datetime
             )
-            '''
-            fig.update_layout(
-                title=f"Bar Chart of '{col_in}'",
-                xaxis_title='Time',
-                yaxis_title='QTY',
-                xaxis=dict(type='category'), # Use 'category' if x_col is datetime and not continuous
             
-                )
+                
             chart_html = fig.to_html()
 
 
@@ -136,7 +134,18 @@ def index():
     </head>
     <body class="bg-light py-5">
         <div class="container" style="max-width: 800px;">
-            <h1 class="mb-4">Upload Your Excel File</h1>
+            <h1 class="mb-4">Welcome to Soltar Batch Optimizer</h1>
+
+            {'<div class="section-title">Upload Purchase Orders and Consumption</div><div class="title-line"></div>'}
+
+            <div class="mb-4">
+                <p>
+                    Please upload your Excel file containing both <strong>Purchase Orders</strong> and <strong>Consumption Data</strong> in the following format. 
+                   
+                </p>
+                <img src="/images/excel_image.PNG"  class="img-fluid rounded shadow-sm" style="max-width: 70%; height: auto;">
+            </div>
+
             <form method="POST" enctype="multipart/form-data" class="card p-4 shadow-sm mb-4">
                 <input type="file" name="file" class="form-control mb-3" required>
                 <button type="submit" class="btn btn-primary">Upload</button>
