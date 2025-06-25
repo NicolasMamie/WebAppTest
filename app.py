@@ -67,17 +67,17 @@ def index():
                     width=0.05
                 ))
             '''
-            df_combined['Time'] = pd.to_datetime(df_combined['Time'])
+            #df_combined['Time'] = pd.to_datetime(df_combined['Time'])
             # Purchases (green)
-            df_purchases = df_combined[df_combined['Type'] == 'Purchase']
+            #df_purchases = df_combined[df_combined['Type'] == 'Purchase']
             fig.add_trace(go.Bar(
-                x=df_purchases['Time'],
-                y=df_purchases['Quantity'],
+                x=df_combined['Time'],
+                y=df_combined['Quantity'],
                 name='Purchase',
                 marker_color='green',
                 width=0.5
             ))
-
+            '''
             # Sales (red)
             df_sales = df_combined[df_combined['Type'] == 'Sale']
             fig.add_trace(go.Bar(
@@ -99,7 +99,15 @@ def index():
                 )
                 
             )
-            chart_html = fig.to_html(full_html=True)
+            '''
+            fig.update_layout(
+                title=f"Bar Chart of '{col_in}'",
+                xaxis_title='Time',
+                yaxis_title='QTY',
+                xaxis=dict(type='category'), # Use 'category' if x_col is datetime and not continuous
+            
+                )
+            chart_html = fig.to_html()
 
 
     return f'''
