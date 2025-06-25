@@ -5,6 +5,9 @@ import plotly.express as px
 import plotly.graph_objects as go
 import datetime as dt
 
+fig = go.Figure()
+reorder_point = None
+
 app = Flask(__name__)
 
 @app.route('/images/<path:filename>')
@@ -12,100 +15,126 @@ def serve_image(filename):
     return send_from_directory('images', filename)
 
 @app.route('/', methods=['GET', 'POST'])
+
+
 def index():
+    global fig, reorder_point
     preview_html = ''
     chart_html = ''
 
+
     if request.method == 'POST':
-        file = request.files['file']
-        df = pd.read_excel(file)
 
-        
-        # Table preview
-        preview_html = df.head().to_html(classes='table table-striped', index=False)
+        #file = request.files['file']
+        file = request.files.get('file')
+        reorder_point = request.form.get('reorder_point', type=float)  # <-- this line
+       
+        if file:
 
-        # Plot first numeric column
-        numeric_cols = df.select_dtypes(include='number').columns
-        date_cols = df.select_dtypes(include=['datetime', 'datetime64']).columns
-        if not numeric_cols.any():
-            chart_html = "<p>No numeric columns to plot.</p>"
-        else:
-            date_col_in = date_cols[0]
-            date_col_out = date_cols[1]
-            
-            
-           
-            col_in = numeric_cols[0]
-            col_out = numeric_cols[1]
-
-            df_in = df[[date_col_in, col_in]].copy()
-            df_in['Type'] = 'Purchase'
-            df_in.rename(columns={'Time_in':'Time', 'In': 'Quantity'}, inplace=True)
-
-            df_out = df[[date_col_out, col_out]].copy()
-            df_out['Type'] = 'Sale'
-            df_out.rename(columns={'Time_out':'Time', 'Out':'Quantity'}, inplace=True)
-
-            if df_out['Quantity'].sum() > 0:
-                df_out['Quantity'] = df_out['Quantity']*(-1)
-
-            df_combined = pd.concat([df_in, df_out])
-
-           
-            df_combined['Time'] = pd.to_datetime(df_combined['Time']).dt.date
-            df_combined = df_combined.sort_values(by = 'Time' )
-            df_combined.dropna(inplace=True)
-
-            print(df_combined)
-          
-         
-            fig = go.Figure()
+            df = pd.read_excel(file)
 
             
-            #df_combined['Time'] = pd.to_datetime(df_combined['Time'])
-            # Purchases (green)
-            #df_purchases = df_combined[df_combined['Type'] == 'Purchase']
-            df_pivot = df_combined.pivot_table(
-                index='Time',
-                columns='Type',
-                values='Quantity',
-                aggfunc='sum',
-                fill_value=0
-            ).reset_index()
+            # Table preview
+            preview_html = df.head().to_html(classes='table table-striped', index=False)
 
-            # Sort by time
-            df_pivot = df_pivot.sort_values('Time')
-
-            # Create the figure
-            fig = go.Figure()
-
-            # Add Purchase bars
-            fig.add_trace(go.Bar(
-                x=df_pivot['Time'],
-                y=df_pivot.get('Purchase', [0]*len(df_pivot)),
-                name='Purchase',
-                marker_color='green'
-            ))
-
-            # Add Sale bars
-            fig.add_trace(go.Bar(
-                x=df_pivot['Time'],
-                y=df_pivot.get('Sale', [0]*len(df_pivot)),
-                name='Sale',
-                marker_color='red'
-            ))
-
-            # Update layout
-            fig.update_layout(
-                title=f"Bar Chart of '{col_in}'",
-                xaxis_title='Time',
-                yaxis_title='QTY',
-                barmode='group',  # 'group' for side-by-side bars, 'stack' to stack them
-                xaxis=dict(type='category')  # Optional: you can remove this if 'Time' is datetime
-            )
-            
+            # Plot first numeric column
+            numeric_cols = df.select_dtypes(include='number').columns
+            date_cols = df.select_dtypes(include=['datetime', 'datetime64']).columns
+            if not numeric_cols.any():
+                chart_html = "<p>No numeric columns to plot.</p>"
+            else:
+                date_col_in = date_cols[0]
+                date_col_out = date_cols[1]
                 
-            chart_html = fig.to_html()
+
+                col_in = numeric_cols[0]
+                col_out = numeric_cols[1]
+
+                df_in = df[[date_col_in, col_in]].copy()
+                df_in['Type'] = 'Purchase'
+                df_in.rename(columns={'Time_in':'Time', 'In': 'Quantity'}, inplace=True)
+
+                df_out = df[[date_col_out, col_out]].copy()
+                df_out['Type'] = 'Sale'
+                df_out.rename(columns={'Time_out':'Time', 'Out':'Quantity'}, inplace=True)
+
+                if df_out['Quantity'].sum() > 0:
+                    df_out['Quantity'] = df_out['Quantity']*(-1)
+
+                df_combined = pd.concat([df_in, df_out])
+
+            
+                df_combined['Time'] = pd.to_datetime(df_combined['Time']).dt.date
+                df_combined = df_combined.sort_values(by = 'Time' )
+                df_combined.dropna(inplace=True)
+
+
+                #df_combined['Time'] = pd.to_datetime(df_combined['Time'])
+                # Purchases (green)
+                #df_purchases = df_combined[df_combined['Type'] == 'Purchase']
+                df_pivot = df_combined.pivot_table(
+                    index='Time',
+                    columns='Type',
+                    values='Quantity',
+                    aggfunc='sum',
+                    fill_value=0
+                ).reset_index()
+
+                # Sort by time
+                df_pivot = df_pivot.sort_values('Time')
+
+                # Create the figure
+                fig = go.Figure()
+
+                # Add Purchase bars
+                fig.add_trace(go.Bar(
+                    x=df_pivot['Time'],
+                    y=df_pivot.get('Purchase', [0]*len(df_pivot)),
+                    name='Purchase',
+                    marker_color='green'
+                ))
+
+                # Add Sale bars
+                fig.add_trace(go.Bar(
+                    x=df_pivot['Time'],
+                    y=df_pivot.get('Sale', [0]*len(df_pivot)),
+                    name='Sale',
+                    marker_color='red'
+                ))
+
+                # Update layout
+                fig.update_layout(
+                    title=f"Bar Chart of '{col_in}'",
+                    xaxis_title='Time',
+                    yaxis_title='QTY',
+                    barmode='group',  # 'group' for side-by-side bars, 'stack' to stack them
+                    xaxis=dict(type='category')  # Optional: you can remove this if 'Time' is datetime
+                )
+             
+                print("reorder point ", reorder_point)
+                if reorder_point:
+                    print("reorder point detected")
+                    fig.add_hline(y=reorder_point, line_dash="dot", line_color="blue", annotation_text="Reorder Point",name="reorder_point")
+
+        if reorder_point:
+                
+                # Clean up previous Reorder Point lines/shapes if any
+            # Remove existing reorder_point line if it exists
+            if 'shapes' in fig.layout:
+                fig.layout.shapes = tuple(
+                    shape for shape in fig.layout.shapes
+                    if getattr(shape, 'name', None) != 'reorder_point'
+                )
+
+            if 'annotations' in fig.layout:
+                fig.layout.annotations = tuple(
+                    ann for ann in fig.layout.annotations
+                    if getattr(ann, 'text', None) != 'Reorder Point'
+                )
+                
+            fig.add_hline(y=reorder_point, line_dash="dot", line_color="blue", annotation_text="Reorder Point",name="reorder_point")
+                    
+        chart_html = fig.to_html()
 
 
     return f'''
@@ -115,6 +144,47 @@ def index():
         <title>Excel Uploader</title>
         <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+        <script> 
+        document.addEventListener('DOMContentLoaded', function () {{
+            document.getElementById('reorder-form').addEventListener('submit', function (e) {{
+                e.preventDefault();  /* Stop full reload */
+
+                const formData = new FormData(this);
+
+                fetch('/', {{
+                    method: 'POST',
+                    body: formData
+                }})
+                .then(response => response.text())
+                .then(html => {{
+                    document.open();
+                    document.write(html);
+                    document.close();
+                }});
+            }});
+
+            document.getElementById('upload-form').addEventListener('submit', function (e) {{
+                e.preventDefault();  /* Stop full reload */
+
+                const formData = new FormData(this);
+
+                fetch('/', {{
+                    method: 'POST',
+                    body: formData
+                }})
+                .then(response => response.text())
+                .then(html => {{
+                    document.open();
+                    document.write(html);
+                    document.close();
+                }});
+            }});
+        }});
+        </script>
+
+
+
         <style>
             .section-title {{
                 font-size: 1.5rem;
@@ -137,7 +207,7 @@ def index():
             <h1 class="mb-4">Welcome to Soltar Reorder Point Optimizer</h1>
 
             {'<div class="section-title">Upload Purchase Orders and Consumption</div><div class="title-line"></div>'}
-
+            
             <div class="mb-4">
                 <p>
                     Please upload your Excel file containing both <strong>Purchase Orders</strong> and <strong>Consumption Data</strong> in the following format. 
@@ -146,13 +216,24 @@ def index():
                 <img src="/images/excel_image.PNG"  class="img-fluid rounded shadow-sm" style="max-width: 70%; height: auto;">
             </div>
 
-            <form method="POST" enctype="multipart/form-data" class="card p-4 shadow-sm mb-4">
-                <input type="file" name="file" class="form-control mb-3" required>
-                <button type="submit" class="btn btn-primary">Upload</button>
-            </form>
-
+            <div class="row">
+                <div class="col-md-6">
+                    <form id = "upload-form" method="POST" enctype="multipart/form-data" class="card p-4 shadow-sm mb-4">
+                        <input type="file" name="file" class="form-control mb-3" required>
+                        <button type="submit" class="btn btn-primary">Upload</button>
+                    </form>
+                </div>
+                <div class="col-md-6">
+                    <form id = "reorder-form" method="POST" class="card p-4 shadow-sm mb-4">
+                        <label for="reorder_point" class="form-label">Enter Reorder Point</label>
+                        <input type="number" name="reorder_point" class="form-control mb-3" placeholder="e.g., 150" required>
+                        <button type="submit" class="btn btn-primary">Set Reorder Point</button>
+                    </form>
+                </div>
+            </div>
             {'<div class="section-title">Preview</div><div class="title-line"></div>' + preview_html if preview_html else ''}
             {'<div class="section-title">Chart</div><div class="title-line"></div>' + chart_html if chart_html else ''}
+
         </div>
     </body>
     </html>
