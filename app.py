@@ -27,7 +27,7 @@ def index():
 
         #file = request.files['file']
         file = request.files.get('file')
-        reorder_point = request.form.get('reorder_point', type=float)  # <-- this line
+        initial_stock = request.form.get('initial_stock', type=float)  # <-- this line
        
         if file:
 
@@ -112,27 +112,27 @@ def index():
                 )
              
                 print("reorder point ", reorder_point)
-                if reorder_point:
+                if initial_stock:
                     print("reorder point detected")
-                    fig.add_hline(y=reorder_point, line_dash="dot", line_color="blue", annotation_text="Reorder Point",name="reorder_point")
+                    fig.add_hline(y=initial_stock, line_dash="dot", line_color="blue", annotation_text="Initial Stock",name="initial_stock")
 
-        if reorder_point:
+        if initial_stock:
                 
                 # Clean up previous Reorder Point lines/shapes if any
             # Remove existing reorder_point line if it exists
             if 'shapes' in fig.layout:
                 fig.layout.shapes = tuple(
                     shape for shape in fig.layout.shapes
-                    if getattr(shape, 'name', None) != 'reorder_point'
+                    if getattr(shape, 'name', None) != 'initial_stock'
                 )
 
             if 'annotations' in fig.layout:
                 fig.layout.annotations = tuple(
                     ann for ann in fig.layout.annotations
-                    if getattr(ann, 'text', None) != 'Reorder Point'
+                    if getattr(ann, 'text', None) != 'Initial Stock'
                 )
                 
-            fig.add_hline(y=reorder_point, line_dash="dot", line_color="blue", annotation_text="Reorder Point",name="reorder_point")
+            fig.add_hline(y=initial_stock, line_dash="dot", line_color="blue", annotation_text="Initial Stock",name="initial_stock")
                     
         chart_html = fig.to_html()
 
@@ -202,6 +202,7 @@ def index():
             }}
         </style>
     </head>
+    
     <body class="bg-light py-5">
         <div class="container" style="max-width: 800px;">
             <h1 class="mb-4">Welcome to Soltar Reorder Point Optimizer</h1>
@@ -224,10 +225,10 @@ def index():
                     </form>
                 </div>
                 <div class="col-md-6">
-                    <form id = "reorder-form" method="POST" class="card p-4 shadow-sm mb-4">
-                        <label for="reorder_point" class="form-label">Enter Reorder Point</label>
-                        <input type="number" name="reorder_point" class="form-control mb-3" placeholder="e.g., 150" required>
-                        <button type="submit" class="btn btn-primary">Set Reorder Point</button>
+                    <form id = "initial-form" method="POST" class="card p-4 shadow-sm mb-4">
+                        <label for="initial_stock" class="form-label">Enter Initial Stock</label>
+                        <input type="number" name="initial_stock" class="form-control mb-3" placeholder="e.g., 150" required>
+                        <button type="submit" class="btn btn-primary">Set Initial Stock</button>
                     </form>
                 </div>
             </div>
