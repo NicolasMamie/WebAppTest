@@ -5,6 +5,43 @@ import plotly.express as px
 import plotly.graph_objects as go
 import datetime as dt
 
+def plot_data(df_pivot, initial_stock):
+
+                    # Create the figure
+                    fig = go.Figure()
+
+                    # Add Purchase bars
+                    fig.add_trace(go.Bar(
+                        x=df_pivot['Time'],
+                        y=df_pivot.get('Purchase', [0]*len(df_pivot)),
+                        name='Purchase',
+                        marker_color='green'
+                    ))
+
+                    # Add Sale bars
+                    fig.add_trace(go.Bar(
+                        x=df_pivot['Time'],
+                        y=df_pivot.get('Sale', [0]*len(df_pivot)),
+                        name='Sale',
+                        marker_color='red'
+                    ))
+
+                    # Update layout
+                    fig.update_layout(
+                        title=f"Bar Chart",
+                        xaxis_title='Time',
+                        yaxis_title='QTY',
+                        barmode='group',  # 'group' for side-by-side bars, 'stack' to stack them
+                        xaxis=dict(type='category')  # Optional: you can remove this if 'Time' is datetime
+                    )
+                
+                    print("reorder point ", reorder_point)
+                    if initial_stock:
+                        print("reorder point detected")
+                        fig.add_hline(y=initial_stock, line_dash="dot", line_color="blue", annotation_text="Initial Stock",name="initial_stock")
+
+                    return fig
+
 fig = go.Figure()
 reorder_point = None
 
@@ -12,7 +49,7 @@ app = Flask(__name__)
 
 @app.route('/images/<path:filename>')
 def serve_image(filename):
-    return send_from_directory('images', filename)
+   return send_from_directory('images', filename)
 
 @app.route('/', methods=['GET', 'POST'])
 
@@ -83,56 +120,25 @@ def index():
                 # Sort by time
                 df_pivot = df_pivot.sort_values('Time')
 
-                # Create the figure
-                fig = go.Figure()
+                fig = plot_data(df_pivot = df_pivot, initial_stock = initial_stock)
 
-                # Add Purchase bars
-                fig.add_trace(go.Bar(
-                    x=df_pivot['Time'],
-                    y=df_pivot.get('Purchase', [0]*len(df_pivot)),
-                    name='Purchase',
-                    marker_color='green'
-                ))
+            if initial_stock:
+                    
+                    # Clean up previous Reorder Point lines/shapes if any
+                # Remove existing reorder_point line if it exists
+                if 'shapes' in fig.layout:
+                    fig.layout.shapes = tuple(
+                        shape for shape in fig.layout.shapes
+                        if getattr(shape, 'name', None) != 'initial_stock'
+                    )
 
-                # Add Sale bars
-                fig.add_trace(go.Bar(
-                    x=df_pivot['Time'],
-                    y=df_pivot.get('Sale', [0]*len(df_pivot)),
-                    name='Sale',
-                    marker_color='red'
-                ))
-
-                # Update layout
-                fig.update_layout(
-                    title=f"Bar Chart of '{col_in}'",
-                    xaxis_title='Time',
-                    yaxis_title='QTY',
-                    barmode='group',  # 'group' for side-by-side bars, 'stack' to stack them
-                    xaxis=dict(type='category')  # Optional: you can remove this if 'Time' is datetime
-                )
-             
-                print("reorder point ", reorder_point)
-                if initial_stock:
-                    print("reorder point detected")
-                    fig.add_hline(y=initial_stock, line_dash="dot", line_color="blue", annotation_text="Initial Stock",name="initial_stock")
-
-        if initial_stock:
-                
-                # Clean up previous Reorder Point lines/shapes if any
-            # Remove existing reorder_point line if it exists
-            if 'shapes' in fig.layout:
-                fig.layout.shapes = tuple(
-                    shape for shape in fig.layout.shapes
-                    if getattr(shape, 'name', None) != 'initial_stock'
-                )
-
-            if 'annotations' in fig.layout:
-                fig.layout.annotations = tuple(
-                    ann for ann in fig.layout.annotations
-                    if getattr(ann, 'text', None) != 'Initial Stock'
-                )
-                
-            fig.add_hline(y=initial_stock, line_dash="dot", line_color="blue", annotation_text="Initial Stock",name="initial_stock")
+                if 'annotations' in fig.layout:
+                    fig.layout.annotations = tuple(
+                        ann for ann in fig.layout.annotations
+                        if getattr(ann, 'text', None) != 'Initial Stock'
+                    )
+                    
+                fig.add_hline(y=initial_stock, line_dash="dot", line_color="blue", annotation_text="Initial Stock",name="initial_stock")
                     
         chart_html = fig.to_html()
 
@@ -145,43 +151,9 @@ def index():
         <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
-        <script> 
-        document.addEventListener('DOMContentLoaded', function () {{
-            document.getElementById('reorder-form').addEventListener('submit', function (e) {{
-                e.preventDefault();  /* Stop full reload */
-
-                const formData = new FormData(this);
-
-                fetch('/', {{
-                    method: 'POST',
-                    body: formData
-                }})
-                .then(response => response.text())
-                .then(html => {{
-                    document.open();
-                    document.write(html);
-                    document.close();
-                }});
-            }});
-
-            document.getElementById('upload-form').addEventListener('submit', function (e) {{
-                e.preventDefault();  /* Stop full reload */
-
-                const formData = new FormData(this);
-
-                fetch('/', {{
-                    method: 'POST',
-                    body: formData
-                }})
-                .then(response => response.text())
-                .then(html => {{
-                    document.open();
-                    document.write(html);
-                    document.close();
-                }});
-            }});
-        }});
-        </script>
+        <script src="/static/main.js"></script>
+        
+        
 
 
 
@@ -202,7 +174,7 @@ def index():
             }}
         </style>
     </head>
-    
+
     <body class="bg-light py-5">
         <div class="container" style="max-width: 800px;">
             <h1 class="mb-4">Welcome to Soltar Reorder Point Optimizer</h1>

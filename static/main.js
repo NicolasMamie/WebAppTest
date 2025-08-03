@@ -1,34 +1,25 @@
 
-
 document.addEventListener('DOMContentLoaded', function () {
     function handleFormSubmit(formId) {
-        const form = document.getElementById(formId);
-        if (!form) return;
+        document.getElementById(formId).addEventListener('submit', function (e) {
+            e.preventDefault();  // Prevent full reload
 
-        form.addEventListener('submit', function (e) {
-            e.preventDefault();
-
-            const formData = new FormData(form);
+            const formData = new FormData(this);
 
             fetch('/', {
                 method: 'POST',
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
+                body: formData
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.preview_html !== undefined) {
-                    document.getElementById('preview-section').innerHTML = data.preview_html;
-                }
-                if (data.chart_html !== undefined) {
-                    document.getElementById('chart-section').innerHTML = data.chart_html;
-                }
+            .then(response => response.text())
+            .then(html => {
+                document.open();
+                document.write(html);
+                document.close();
             });
         });
     }
 
-    handleFormSubmit('reorder-form');
     handleFormSubmit('upload-form');
+    handleFormSubmit('initial-form');
 });
+
